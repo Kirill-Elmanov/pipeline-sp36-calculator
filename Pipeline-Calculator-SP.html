@@ -1,0 +1,2233 @@
+<!--
+Copyright (c) 2026 <Елманов Кирилл Алексеевич>
+Все права защищены. 
+Данный файл предназначен только для демонстрации работы расчетов по СП 36.13330.2012.
+Любое использование, копирование, изменение и включение в другие программы без письменного разрешения автора запрещено.
+-->
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расчёт трубопроводов - СП 36.13330.2012</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Roboto+Condensed:wght@400;700&display=swap');
+
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #151a23;
+            --bg-elevated: #1c232e;
+            --accent-copper: #c87533;
+            --accent-bronze: #8b6914;
+            --accent-ice: #4a90a4;
+            --text-primary: #e8e6e3;
+            --text-secondary: #9da5b4;
+            --border-color: #2d3748;
+            --error: #d64545;
+            --success: #48a999;
+            --warning: #f0a500;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto Condensed', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #0f1419 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 0;
+            background-attachment: fixed;
+        }
+
+        .app-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: var(--bg-secondary);
+            border-right: 2px solid var(--accent-copper);
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar-header {
+            padding: 30px 20px;
+            border-bottom: 1px solid var(--border-color);
+            background: linear-gradient(180deg, var(--bg-elevated), var(--bg-secondary));
+        }
+
+        .sidebar-title {
+            font-family: 'Bebas Neue', cursive;
+            font-size: 1.6rem;
+            color: var(--accent-copper);
+            text-shadow: 0 0 10px rgba(200, 117, 51, 0.3);
+            margin-bottom: 5px;
+        }
+
+        .sidebar-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .module-nav {
+            padding: 20px 0;
+        }
+
+        .module-nav-item {
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .module-nav-item:hover {
+            background: var(--bg-elevated);
+            border-left-color: var(--accent-bronze);
+            color: var(--text-primary);
+        }
+
+        .module-nav-item.active {
+            background: var(--bg-elevated);
+            border-left-color: var(--accent-copper);
+            color: var(--accent-copper);
+        }
+
+        .main-content {
+            margin-left: 300px;
+            padding: 40px;
+            width: calc(100% - 300px);
+        }
+
+        .module-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .module-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section-header {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-family: 'Bebas Neue', cursive;
+            font-size: 2.5rem;
+            color: var(--accent-copper);
+            text-shadow: 0 0 15px rgba(200, 117, 51, 0.3);
+            margin-bottom: 10px;
+        }
+
+        .section-subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--accent-ice);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input,
+        .form-select {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: 'Roboto Condensed', sans-serif;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--accent-copper);
+            box-shadow: 0 0 0 3px rgba(200, 117, 51, 0.2);
+        }
+
+        .form-help {
+            display: block;
+            margin-top: 5px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            background: var(--accent-copper);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(200, 117, 51, 0.3);
+        }
+
+        .btn:hover {
+            background: var(--accent-bronze);
+            box-shadow: 0 6px 15px rgba(200, 117, 51, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-elevated);
+            border-color: var(--accent-copper);
+        }
+
+        .result-box {
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--accent-ice);
+            padding: 15px 20px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .result-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            color: var(--text-primary);
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .result-unit {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-left: 5px;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+
+        .alert-success {
+            background: rgba(72, 169, 153, 0.2);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .alert-error {
+            background: rgba(214, 69, 69, 0.2);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+
+        .alert-warning {
+            background: rgba(240, 165, 0, 0.2);
+            border: 1px solid var(--warning);
+            color: var(--warning);
+        }
+
+        .reference-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .reference-table th,
+        .reference-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+
+        .reference-table th {
+            background: var(--bg-secondary);
+            color: var(--accent-ice);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        .reference-table td {
+            color: var(--text-primary);
+        }
+
+        .reference-table tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        .formula-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .formula-title {
+            color: var(--accent-copper);
+            font-weight: 700;
+            margin-bottom: 10px;
+            font-family: 'Roboto Condensed', sans-serif;
+        }
+
+        .formula-content {
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .grid-3 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: relative;
+            }
+            
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                padding: 20px;
+            }
+
+            .grid-2,
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .reference-link {
+            color: var(--accent-ice);
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .reference-link:hover {
+            color: var(--accent-copper);
+            text-decoration: underline;
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 30px 0;
+        }
+
+        .calculation-block {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+
+        .calculation-step {
+            margin: 15px 0;
+            padding: 15px;
+            background: var(--bg-elevated);
+            border-left: 3px solid var(--accent-ice);
+        }
+
+        .step-title {
+            color: var(--accent-copper);
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .step-formula {
+            font-family: 'Courier New', monospace;
+            color: var(--text-primary);
+            margin: 10px 0;
+        }
+
+        .step-result {
+            color: var(--success);
+            font-weight: 700;
+            margin-top: 10px;
+        }
+
+        .report-section {
+            background: var(--bg-elevated);
+            padding: 30px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .report-header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--accent-copper);
+            margin-bottom: 30px;
+        }
+
+        .report-title-main {
+            font-family: 'Bebas Neue', cursive;
+            font-size: 2rem;
+            color: var(--accent-copper);
+            margin-bottom: 10px;
+        }
+
+        .report-subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .report-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .report-row:last-child {
+            border-bottom: none;
+        }
+
+        .report-label {
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .report-value {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .print-btn {
+            display: inline-block;
+            padding: 10px 25px;
+            background: var(--accent-ice);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 700;
+            margin: 20px 0;
+        }
+
+        .print-btn:hover {
+            background: var(--accent-copper);
+        }
+
+        @media print {
+            .sidebar,
+            .btn,
+            .print-btn {
+                display: none;
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            body {
+                background: white;
+                color: black;
+            }
+
+            .card,
+            .report-section {
+                border: 1px solid #000;
+                background: white;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Боковое меню -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">РАСЧЕТ ТРУБОПРОВОДОВ</div>
+                <div class="sidebar-subtitle">СП 36.13330.2012</div>
+            </div>
+            <nav class="module-nav">
+                <div class="module-nav-item active" data-module="reference">📚 1.1 СПРАВОЧНЫЕ ДАННЫЕ</div>
+                <div class="module-nav-item" data-module="input">📝 1. ИСХОДНЫЕ ДАННЫЕ</div>
+                <div class="module-nav-item" data-module="thickness">🔧 2. РАСЧЕТ ТОЛЩИНЫ СТЕНКИ</div>
+                <div class="module-nav-item" data-module="strength">💪 3. ПРОВЕРКА ПРОЧНОСТИ</div>
+                <div class="module-nav-item" data-module="report-basic">📊 4. ОСНОВНОЙ ОТЧЕТ</div>
+                <div class="module-nav-item" data-module="stability">🌊 5. УСТОЙЧИВОСТЬ (ВСПЛЫТИЕ)</div>
+                <div class="module-nav-item" data-module="compensators">⚙️ 6. КОМПЕНСАТОРЫ</div>
+                <div class="module-nav-item" data-module="seismic">🌍 7. СЕЙСМИКА</div>
+                <div class="module-nav-item" data-module="report-final">📋 8. ИТОГОВЫЙ ОТЧЕТ</div>
+            </nav>
+        </div>
+
+        <!-- Основной контент -->
+        <div class="main-content">
+            <!-- 1.1 СПРАВОЧНЫЕ ДАННЫЕ -->
+            <section class="module-section active" id="reference">
+                <div class="section-header">
+                    <h1 class="section-title">СПРАВОЧНЫЕ ДАННЫЕ</h1>
+                    <p class="section-subtitle">Таблицы и коэффициенты из СП 36.13330.2012</p>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Таблица 1. Категории трубопроводов и коэффициенты условий работы</h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">СП 36.13330.2012, п. 6.3, таблица 1</p>
+                    <table class="reference-table">
+                        <thead>
+                            <tr>
+                                <th>Категория участка</th>
+                                <th>Коэффициент условий работы m</th>
+                                <th>Описание</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>В</td>
+                                <td>0,660</td>
+                                <td>Повышенная ответственность (КС, НПС, ГРС, участки в зданиях)</td>
+                            </tr>
+                            <tr>
+                                <td>I</td>
+                                <td>0,825</td>
+                                <td>Высокая ответственность (переходы, узлы)</td>
+                            </tr>
+                            <tr>
+                                <td>II</td>
+                                <td>0,825</td>
+                                <td>Повышенная ответственность</td>
+                            </tr>
+                            <tr>
+                                <td>III</td>
+                                <td>0,990</td>
+                                <td>Нормальная ответственность (типовая прокладка)</td>
+                            </tr>
+                            <tr>
+                                <td>IV</td>
+                                <td>0,990</td>
+                                <td>Нормальная ответственность</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Таблица 14. Коэффициент надежности по нагрузке</h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">СП 36.13330.2012, п. 12.2, таблица 14</p>
+                    <table class="reference-table">
+                        <thead>
+                            <tr>
+                                <th>Нагрузка и воздействие</th>
+                                <th>Коэффициент n</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Постоянные (Давление (вес) грунта)</td>
+                                <td>1,20 (0,80)</td>
+                            </tr>
+                            <tr>
+                                <td>Временные длительные (Внутреннее давление для газопроводов)</td>
+                                <td>1,10</td>
+                            </tr>
+                            <tr>
+                                <td>Кратковременные (Нагрузки и воздействия, возникающие при испытании трубопроводов)</td>
+                                <td>1,00</td>
+                            </tr>
+                            <tr>
+                                <td>Особые (Воздействие деформаций грунта, сопровождающихся изменением его структуры (например, деформация просадочных грунтов при замачивании или многолетнемерзлых грунтов при оттаивании))</td>
+                                <td>1,00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Коэффициенты надежности по материалу</h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">СП 36.13330.2012, п. 12.1</p>
+                    <table class="reference-table">
+                        <thead>
+                            <tr>
+                                <th>Параметр</th>
+                                <th>Обозначение</th>
+                                <th>Значение</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Коэффициент надежности по материалу (предел текучести)</td>
+                                <td>k<sub>1</sub></td>
+                                <td>1,34 (высококачественные трубы)<br>1,47 (обычние трубы)</td>
+                            </tr>
+                            <tr>
+                                <td>Коэффициент надежности по материалу (временное сопротивление)</td>
+                                <td>k<sub>2</sub></td>
+                                <td>1,15 (R₂ᴴ / R₁ᴴ ≤ 0,8)<br>1,20 (R₂ᴴ / R₁ᴴ > 0,8)</td>
+                            </tr>
+                            <tr>
+                                <td>Коэффициент надежности по ответственности</td>
+                                <td>k<sub>н</sub></td>
+                                <td>1,00 - 1,55 (зависит от диаметра и давления)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Физические характеристики стали</h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">СП 36.13330.2012, п. 12.1</p>
+                    <table class="reference-table">
+                        <thead>
+                            <tr>
+                                <th>Параметр</th>
+                                <th>Обозначение</th>
+                                <th>Значение</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Модуль упругости</td>
+                                <td>E<sub>0</sub></td>
+                                <td>206000 МПа</td>
+                            </tr>
+                            <tr>
+                                <td>Коэффициент Пуассона (упругая область)</td>
+                                <td>μ<sub>0</sub></td>
+                                <td>0,3</td>
+                            </tr>
+                            <tr>
+                                <td>Коэффициент линейного расширения</td>
+                                <td>α</td>
+                                <td>1,2×10<sup>-5</sup> 1/°C</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Формулы расчета</h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">СП 36.13330.2012, раздел 12</p>
+                    
+                    <div class="formula-box">
+                        <div class="formula-title">1. Расчетная толщина стенки (п. 12.3, формула 10)</div>
+                        <div class="formula-content">
+                            δ = (n × p × D<sub>н</sub>) / (2 × (R<sub>1</sub> + n × p))
+                            <br><br>
+                            где:<br>
+                            n - коэффициент надежности по нагрузке<br>
+                            p - рабочее давление, МПа<br>
+                            D<sub>н</sub> - наружный диаметр трубы, мм<br>
+                            R<sub>1</sub> - расчетное сопротивление, МПа
+                        </div>
+                    </div>
+
+                    <div class="formula-box">
+                        <div class="formula-title">2. Расчетное сопротивление R<sub>1</sub> (п. 12.1, формула 2)</div>
+                        <div class="formula-content">
+                            R<sub>1</sub> = (m × R<sub>1</sub><sup>н</sup>) / (k<sub>1</sub> × k<sub>н</sub>)
+                            <br><br>
+                            где:<br>
+                            m - коэффициент условий работы<br>
+                            R<sub>н</sub> - нормативный предел текучести, МПа<br>
+                            k<sub>н1</sub> - коэффициент надежности по материалу<br>
+                            k<sub>н</sub> - коэффициент надежности по ответственности (таблица 12)
+                        </div>
+                    </div>
+
+                    <div class="formula-box">
+                        <div class="formula-title">3. Кольцевые напряжения (п. 12.4.2, формула 14)</div>
+                        <div class="formula-content">
+                            σ<sub>кц</sub><sup>н</sup> = (p × D<sub>вн</sub>) / (2 × δ<sub>н</sub>)
+                            <br><br>
+                            где:<br>
+                            p - рабочее давление, МПа<br>
+                            D<sub>вн</sub> - внутренний диаметр трубы, мм<br>
+                            δ<sub>н</sub> - номинальная толщина стенки, мм
+                        </div>
+                    </div>
+
+                    <div class="formula-box">
+                        <div class="formula-title">4. Продольные напряжения (п. 12.4.3, формула 15)</div>
+                        <div class="formula-content">
+                            σ<sub>пр</sub><sup>н</sup> = μ × σ<sub>кц</sub><sup>н</sup> - α × E × Δt ± (E × D<sub>н</sub>) / (2 × ρ)
+                            <br><br>
+                            где:<br>
+                            μ - коэффициент Пуассона<br>
+                            σ<sub>кц</sub><sup>н</sup> - кольцевые напряжения, МПа<br>
+                            α - коэффициент линейного расширения, 1/°C<br>
+                            E - модуль упругости, МПа<br>
+                            Δt - температурный перепад, °C<br>
+                            ρ - радиус упругого изгиба, м
+                        </div>
+                    </div>
+
+                    <div class="formula-box">
+                        <div class="formula-title">5. Условия прочности (п. 12.4.2, формулы 11-12)</div>
+                        <div class="formula-content">
+                            <strong>Формула 11:</strong> |σ<sub>пр</sub><sup>н</sup>| ≤ (ψ<sub>1</sub> × m × R<sub>2</sub><sup>н</sup>) / (0,9 × k<sub>н</sub>)
+                            <br><br>
+                            <strong>Формула 12:</strong> σ<sub>кц</sub><sup>н</sup> ≤ (m × R<sub>2</sub><sup>н</sup>) / (0,9 × k<sub>н</sub>)
+                            <br><br>
+                            где:<br>
+                            ψ - коэффициент двухосного напряженного состояния<br>
+                            m - коэффициент условий работы<br>
+                            R<sub>2</sub><sup>н</sup> - минимальное значение предела текучести, МПа<br>
+                            k<sub>1</sub> - коэффициент надежности по материалу<br>
+                            k<sub>н</sub> - коэффициент надежности по ответственности трубопровода
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 1. ИСХОДНЫЕ ДАННЫЕ -->
+            <section class="module-section" id="input">
+                <div class="section-header">
+                    <h1 class="section-title">ИСХОДНЫЕ ДАННЫЕ</h1>
+                    <p class="section-subtitle">Ввод параметров трубопровода</p>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Параметры трубопровода</h2>
+                    
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Наружный диаметр D<sub>н</sub>, мм</label>
+                            <input type="number" class="form-input" id="diameter" value="1020" step="1" min="100">
+                            <span class="form-help">Номинальный диаметр трубы (DN 100 - DN 1400)</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Рабочее давление p, МПа</label>
+                            <input type="number" class="form-input" id="pressure" value="7.5" step="0.1" min="1.2" max="10">
+                            <span class="form-help">Избыточное давление среды (1,2 - 10 МПа)</span>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Категория трубопровода <a href="javascript:void(0)" class="reference-link" onclick="showModule('reference')">➜ Табл. 1</a></label>
+                            <select class="form-select" id="category">
+                                <option value="B">В (m = 0,660) - Повышенная ответственность</option>
+                                <option value="I">I (m = 0,825) - Высокая ответственность</option>
+                                <option value="II">II (m = 0,825) - Повышенная ответственность</option>
+                                <option value="III" selected>III (m = 0,990) - Нормальная ответственность</option>
+                                <option value="IV">IV (m = 0,990) - Нормальная ответственность</option>
+                            </select>
+                            <span class="form-help">СП 36.13330.2012, табл. 1 (п. 6.3)</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Тип среды</label>
+                            <select class="form-select" id="medium">
+                                <option value="gas">Газ (газопровод)</option>
+                                <option value="oil" selected>Нефть (нефтепровод)</option>
+                                <option value="product">Нефтепродукты</option>
+                            </select>
+                            <span class="form-help">Транспортируемая среда</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Характеристики материала трубы</h2>
+                    
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Нормативный предел текучести R<sub>н</sub>, МПа</label>
+                            <input type="number" class="form-input" id="yield_strength" value="390" step="10" min="200">
+                            <span class="form-help">Для стали различных классов прочности (X42 - X80)</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Временное сопротивление R<sub>m</sub>, МПа</label>
+                            <input type="number" class="form-input" id="tensile_strength" value="530" step="10" min="300">
+                            <span class="form-help">Предел прочности на разрыв</span>
+                        </div>
+                    </div>
+
+                    <div class="grid-3">
+                        <div class="form-group">
+                            <label class="form-label">Коэфф. надежности k<sub>н1</sub> <a href="javascript:void(0)" class="reference-link" onclick="showModule('reference')">➜ Справка</a></label>
+                            <select class="form-select" id="k_n1">
+                                <option value="1.34" selected>1,34 - Новые трубы</option>
+                                <option value="1.47">1,47 - После эксплуатации</option>
+                            </select>
+                            <span class="form-help">СП 36.13330.2012, п. 12.1</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Коэфф. надежности k<sub>н2</sub></label>
+                            <input type="number" class="form-input" id="k_n2" value="1.15" step="0.01" readonly>
+                            <span class="form-help">СП 36.13330.2012, п. 12.1</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Коэфф. надежности по ответственности k<sub>н</sub></label>
+                            <select class="form-select" id="k_n">
+                                <option value="1.0" selected>1,0 - Трубы без дефектов</option>
+                                <option value="1.15">1,15 - Трубы с дефектами типа 1</option>
+                                <option value="1.34">1,34 - Трубы с дефектами типа 2</option>
+                                <option value="1.55">1,55 - Трубы с дефектами типа 3</option>
+                            </select>
+                            <span class="form-help">СП 36.13330.2012, п. 12.1, таблица 12</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Температурные условия</h2>
+                    
+                    <div class="grid-3">
+                        <div class="form-group">
+                            <label class="form-label">Температура эксплуатации t<sub>раб</sub>, °C</label>
+                            <input type="number" class="form-input" id="temp_work" value="40" step="1">
+                            <span class="form-help">Температура среды при эксплуатации</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Температура монтажа t<sub>мон</sub>, °C</label>
+                            <input type="number" class="form-input" id="temp_mount" value="15" step="1">
+                            <span class="form-help">Температура при сварке и монтаже</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Температурный перепад Δt, °C</label>
+                            <input type="number" class="form-input" id="temp_delta" value="0" step="1" readonly>
+                            <span class="form-help">Автоматический расчет</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Геометрические параметры</h2>
+                    
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Глубина заложения H, м</label>
+                            <input type="number" class="form-input" id="depth" value="1.5" step="0.1" min="0.8">
+                            <span class="form-help">От верха трубы до поверхности земли (мин. 0,8 м)</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Радиус упругого изгиба ρ, м</label>
+                            <input type="number" class="form-input" id="bend_radius" value="1000" step="10" min="0">
+                            <span class="form-help">0 - для прямых участков, >0 - для изгибов</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn" onclick="calculateAll()">ВЫПОЛНИТЬ РАСЧЕТ</button>
+                    <button class="btn btn-secondary" onclick="resetInputs()" style="margin-left: 15px;">СБРОСИТЬ</button>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="showModule('thickness')">СЛЕДУЮЩАЯ ГЛАВА: 2. РАСЧЕТ ТОЛЩИНЫ СТЕНКИ →</button>
+                </div>
+            </section>
+
+            <!-- 2. РАСЧЕТ ТОЛЩИНЫ СТЕНКИ -->
+            <section class="module-section" id="thickness">
+                <div class="section-header">
+                    <h1 class="section-title">РАСЧЕТ ТОЛЩИНЫ СТЕНКИ</h1>
+                    <p class="section-subtitle">СП 36.13330.2012, п. 12.3</p>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Исходные данные</h2>
+                    <div class="grid-3">
+                        <div class="result-box">
+                            <div class="result-label">Наружный диаметр D<sub>н</sub></div>
+                            <div class="result-value" id="res_diam">-<span class="result-unit">мм</span></div>
+                        </div>
+                        <div class="result-box">
+                            <div class="result-label">Рабочее давление p</div>
+                            <div class="result-value" id="res_press">-<span class="result-unit">МПа</span></div>
+                        </div>
+                        <div class="result-box">
+                            <div class="result-label">Категория участка</div>
+                            <div class="result-value" id="res_cat">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Расчет расчетного сопротивления R<sub>1</sub></h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">СП 36.13330.2012, п. 12.1, формула (2)</p>
+                    
+                    <div class="calculation-block">
+                        <div class="calculation-step">
+                            <div class="step-title">Формула:</div>
+                            <div class="step-formula">R<sub>1</sub> = (m × R<sub>н</sub>) / (k<sub>н1</sub> × k<sub>н</sub>)</div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Подстановка значений:</div>
+                            <div class="step-formula" id="r1_calc">-</div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Результат:</div>
+                            <div class="step-result" id="r1_result">R<sub>1</sub> = - МПа</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Определение коэффициента надежности n</h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">СП 36.13330.2012, п. 12.2, таблица 14</p>
+                    
+                    <div class="calculation-block">
+                        <div class="calculation-step">
+                            <div class="step-title">Значение коэффициента:</div>
+                            <div class="step-result" id="n_result">n = -</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Расчет толщины стенки δ</h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">СП 36.13330.2012, п. 12.3, формула (10)</p>
+                    
+                    <div class="calculation-block">
+                        <div class="calculation-step">
+                            <div class="step-title">Формула:</div>
+                            <div class="step-formula">δ = (n × p × D<sub>н</sub>) / (2 × (R<sub>1</sub> + n × p))</div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Подстановка значений:</div>
+                            <div class="step-formula" id="delta_calc">-</div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Расчетная толщина:</div>
+                            <div class="step-result" id="delta_result">δ<sub>расч</sub> = - мм</div>
+                        </div>
+
+                        <div class="calculation-step">
+                            <div class="step-title">Принятая толщина (с округлением):</div>
+                            <div class="step-result" id="delta_nominal">δ<sub>ном</sub> = - мм</div>
+                        </div>
+                    </div>
+
+                    <div id="thickness_check"></div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn btn-secondary" onclick="showModule('input')">← ПРЕДЫДУЩАЯ ГЛАВА</button>
+                    <button class="btn btn-secondary" onclick="showModule('strength')" style="margin-left: 15px;">СЛЕДУЮЩАЯ ГЛАВА: 3. ПРОВЕРКА ПРОЧНОСТИ →</button>
+                </div>
+            </section>
+
+            <!-- 3. ПРОВЕРКА ПРОЧНОСТИ -->
+            <section class="module-section" id="strength">
+                <div class="section-header">
+                    <h1 class="section-title">ПРОВЕРКА ПРОЧНОСТИ И УСТОЙЧИВОСТИ</h1>
+                    <p class="section-subtitle">СП 36.13330.2012, п. 12.4</p>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Расчет кольцевых напряжений</h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">СП 36.13330.2012, п. 12.4.2, формула (14)</p>
+                    
+                    <div class="calculation-block">
+                        <div class="calculation-step">
+                            <div class="step-title">Внутренний диаметр:</div>
+                            <div class="step-formula" id="dvn_calc">D<sub>вн</sub> = D<sub>н</sub> - 2 × δ<sub>ном</sub> = -</div>
+                        </div>
+
+                        <div class="calculation-step">
+                            <div class="step-title">Формула:</div>
+                            <div class="step-formula">σ<sub>кц</sub> = (p × D<sub>вн</sub>) / (2 × δ<sub>ном</sub>)</div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Подстановка значений:</div>
+                            <div class="step-formula" id="ring_calc">-</div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Кольцевые напряжения:</div>
+                            <div class="step-result" id="ring_result">σ<sub>кц</sub> = - МПа</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Расчет продольных напряжений</h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">СП 36.13330.2012, п. 12.4.3, формула (15)</p>
+                    
+                    <div class="calculation-block">
+                        <div class="calculation-step">
+                            <div class="step-title">Температурный перепад:</div>
+                            <div class="step-formula" id="temp_calc">Δt = t<sub>раб</sub> - t<sub>мон</sub> = -</div>
+                        </div>
+
+                        <div class="calculation-step">
+                            <div class="step-title">Формула:</div>
+                            <div class="step-formula">σ<sub>пр</sub> = μ × σ<sub>кц</sub> - α × E × Δt ± (E × D<sub>н</sub>) / (2 × ρ)</div>
+                            <div class="step-formula" style="margin-top: 10px; font-size: 0.9rem;">
+                                μ = 0,3 (коэфф. Пуассона)<br>
+                                α = 1,2×10<sup>-5</sup> 1/°C (коэфф. линейного расширения)<br>
+                                E = 206000 МПа (модуль упругости)
+                            </div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Подстановка значений:</div>
+                            <div class="step-formula" id="long_calc">-</div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Продольные напряжения:</div>
+                            <div class="step-result" id="long_result">σ<sub>пр</sub> = - МПа</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Проверка условий прочности</h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">СП 36.13330.2012, п. 12.4.2, формулы (11-12)</p>
+                    
+                    <div class="calculation-block">
+                        <div class="calculation-step">
+                            <div class="step-title">Условие 1 (формула 11):</div>
+                            <div class="step-formula" id="check1_formula">-</div>
+                            <div id="check1_result"></div>
+                        </div>
+
+                        <div class="calculation-step">
+                            <div class="step-title">Условие 2 (формула 12):</div>
+                            <div class="step-formula" id="check2_formula">-</div>
+                            <div id="check2_result"></div>
+                        </div>
+                    </div>
+
+                    <div id="strength_conclusion"></div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn btn-secondary" onclick="showModule('thickness')">← ПРЕДЫДУЩАЯ ГЛАВА</button>
+                    <button class="btn btn-secondary" onclick="showModule('report-basic')" style="margin-left: 15px;">СЛЕДУЮЩАЯ ГЛАВА: 4. ОСНОВНОЙ ОТЧЕТ →</button>
+                </div>
+            </section>
+
+            <!-- 4. ОСНОВНОЙ ОТЧЕТ -->
+            <section class="module-section" id="report-basic">
+                <div class="section-header">
+                    <h1 class="section-title">ОСНОВНОЙ ОТЧЕТ</h1>
+                    <p class="section-subtitle">Результаты расчета прочности</p>
+                </div>
+
+                <div class="report-section">
+                    <div class="report-header">
+                        <div class="report-title-main">РАСЧЕТ ПРОЧНОСТИ ПОДЗЕМНОГО ТРУБОПРОВОДА</div>
+                        <div class="report-subtitle">СП 36.13330.2012 "Магистральные трубопроводы"</div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">1. Исходные данные</h2>
+                        <div id="report_input_data"></div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">2. Результаты расчета толщины стенки</h2>
+                        <div id="report_thickness_data"></div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">3. Проверка прочности</h2>
+                        <div id="report_strength_data"></div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">4. Заключение</h2>
+                        <div id="report_conclusion"></div>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 30px;">
+                        <button class="print-btn" onclick="window.print()">🖨️ ПЕЧАТЬ ОТЧЕТА</button>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="showModule('strength')">← ПРЕДЫДУЩАЯ ГЛАВА</button>
+                    <button class="btn btn-secondary" onclick="showModule('stability')" style="margin-left: 15px;">СЛЕДУЮЩАЯ ГЛАВА: 5. УСТОЙЧИВОСТЬ →</button>
+                </div>
+            </section>
+
+            <!-- 5. УСТОЙЧИВОСТЬ (ВСПЛЫТИЕ) -->
+            <section class="module-section" id="stability">
+                <div class="section-header">
+                    <h1 class="section-title">УСТОЙЧИВОСТЬ ПРОТИВ ВСПЛЫТИЯ</h1>
+                    <p class="section-subtitle">СП 36.13330.2012, п. 12.4.5</p>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Условия прокладки</h2>
+                    
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Глубина заложения H, м</label>
+                            <input type="number" class="form-input" id="stab_depth" value="1.5" step="0.1" min="0.8">
+                            <span class="form-help">От верха трубы до поверхности земли</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Уровень грунтовых вод H<sub>гв</sub>, м</label>
+                            <input type="number" class="form-input" id="water_level" value="0.5" step="0.1" min="0">
+                            <span class="form-help">Расстояние от поверхности до УГВ</span>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Плотность грунта γ<sub>гр</sub>, кН/м³</label>
+                            <input type="number" class="form-input" id="soil_density" value="18" step="0.5" min="15">
+                            <span class="form-help">Объемный вес грунта засыпки</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Плотность среды γ<sub>ср</sub>, кН/м³</label>
+                            <input type="number" class="form-input" id="medium_density" value="8.5" step="0.1" min="0">
+                            <span class="form-help">Плотность транспортируемой среды</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Коэффициент надежности по нагрузке γ<sub>n</sub></label>
+                        <select class="form-select" id="gamma_n">
+                            <option value="0.95">0,95 - Вес грунта</option>
+                            <option value="1.10" selected>1,10 - Архимедова сила</option>
+                        </select>
+                        <span class="form-help">СП 36.13330.2012, п. 12.2, таблица 14</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Расчет устойчивости</h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">СП 36.13330.2012, п. 12.4.5, формулы 27-28</p>
+                    
+                    <div class="calculation-block">
+                        <div class="calculation-step">
+                            <div class="step-title">Вес трубы с изоляцией q<sub>тр</sub>, Н/м:</div>
+                            <div class="step-formula" id="stab_qtube_calc">-</div>
+                            <div class="step-result" id="stab_qtube_result">q<sub>тр</sub> = - Н/м</div>
+                        </div>
+
+                        <div class="calculation-step">
+                            <div class="step-title">Вес продукта q<sub>пр</sub>, Н/м:</div>
+                            <div class="step-formula" id="stab_qprod_calc">-</div>
+                            <div class="step-result" id="stab_qprod_result">q<sub>пр</sub> = - Н/м</div>
+                        </div>
+
+                        <div class="calculation-step">
+                            <div class="step-title">Вес грунта над трубой q<sub>гр</sub>, Н/м:</div>
+                            <div class="step-formula" id="stab_qsoil_calc">-</div>
+                            <div class="step-result" id="stab_qsoil_result">q<sub>гр</sub> = - Н/м</div>
+                        </div>
+
+                        <div class="calculation-step">
+                            <div class="step-title">Архимедова сила q<sub>a</sub>, Н/м:</div>
+                            <div class="step-formula" id="stab_qarch_calc">-</div>
+                            <div class="step-result" id="stab_qarch_result">q<sub>a</sub> = - Н/м</div>
+                        </div>
+
+                        <div class="calculation-step">
+                            <div class="step-title">Условие устойчивости (формула 27):</div>
+                            <div class="step-formula" id="stab_condition">-</div>
+                            <div id="stab_check_result"></div>
+                        </div>
+
+                        <div class="calculation-step" id="ballast_section" style="display: none;">
+                            <div class="step-title">Требуемая балластировка q<sub>балл</sub>, Н/м:</div>
+                            <div class="step-formula" id="ballast_calc">-</div>
+                            <div class="step-result" id="ballast_result">q<sub>балл</sub> = - Н/м</div>
+                        </div>
+                    </div>
+
+                    <div id="stability_conclusion"></div>
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn" onclick="calculateStability()">ВЫПОЛНИТЬ РАСЧЕТ</button>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="showModule('report-basic')">← ПРЕДЫДУЩАЯ ГЛАВА</button>
+                    <button class="btn btn-secondary" onclick="showModule('compensators')" style="margin-left: 15px;">СЛЕДУЮЩАЯ ГЛАВА: 6. КОМПЕНСАТОРЫ →</button>
+                </div>
+            </section>
+
+            <!-- 6. КОМПЕНСАТОРЫ -->
+            <section class="module-section" id="compensators">
+                <div class="section-header">
+                    <h1 class="section-title">ТЕМПЕРАТУРНЫЕ КОМПЕНСАТОРЫ</h1>
+                    <p class="section-subtitle">СП 36.13330.2012, п. 12.6</p>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Исходные данные для компенсаторов</h2>
+                    
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Тип компенсатора</label>
+                            <select class="form-select" id="comp_type">
+                                <option value="П-образный" selected>П-образный компенсатор</option>
+                                <option value="Г-образный">Г-образный компенсатор</option>
+                                <option value="Лирообразный">Лирообразный компенсатор</option>
+                                <option value="Сальниковый">Сальниковый компенсатор</option>
+                            </select>
+                            <span class="form-help">Выберите тип компенсирующего устройства</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Длина участка L, м</label>
+                            <input type="number" class="form-input" id="comp_length" value="100" step="10" min="10">
+                            <span class="form-help">Длина компенсируемого участка</span>
+                        </div>
+                    </div>
+
+                    <div class="grid-3">
+                        <div class="form-group">
+                            <label class="form-label">Температура монтажа t<sub>1</sub>, °C</label>
+                            <input type="number" class="form-input" id="comp_t1" value="15" step="1">
+                            <span class="form-help">Температура при сварке</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Температура эксплуатации t<sub>2</sub>, °C</label>
+                            <input type="number" class="form-input" id="comp_t2" value="70" step="1">
+                            <span class="form-help">Максимальная температура среды</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Температурный перепад Δt, °C</label>
+                            <input type="number" class="form-input" id="comp_delta_t" value="55" step="1" readonly>
+                            <span class="form-help">Автоматический расчет</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Расчет температурного удлинения</h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">СП 36.13330.2012, п. 12.6</p>
+                    
+                    <div class="calculation-block">
+                        <div class="calculation-step">
+                            <div class="step-title">Формула температурного удлинения:</div>
+                            <div class="step-formula">ΔL = α × L × Δt</div>
+                            <div class="step-formula" style="margin-top: 10px; font-size: 0.9rem;">
+                                где:<br>
+                                α = 1,2×10<sup>-5</sup> 1/°C - коэффициент линейного расширения<br>
+                                L - длина компенсируемого участка, м<br>
+                                Δt - температурный перепад, °C
+                            </div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Подстановка значений:</div>
+                            <div class="step-formula" id="comp_delta_calc">-</div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Температурное удлинение:</div>
+                            <div class="step-result" id="comp_delta_result">ΔL = - мм</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Расчет П-образного компенсатора</h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">Определение размеров компенсатора</p>
+                    
+                    <div class="calculation-block">
+                        <div class="calculation-step">
+                            <div class="step-title">Формула для определения вылета b:</div>
+                            <div class="step-formula">b = √(2,5 × D<sub>н</sub> × ΔL)</div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Подстановка значений:</div>
+                            <div class="step-formula" id="comp_b_calc">-</div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Вылет компенсатора:</div>
+                            <div class="step-result" id="comp_b_result">b = - м</div>
+                        </div>
+
+                        <div class="calculation-step">
+                            <div class="step-title">Рекомендуемая длина плеча L<sub>п</sub>:</div>
+                            <div class="step-formula" id="comp_lp_calc">-</div>
+                            <div class="step-result" id="comp_lp_result">L<sub>п</sub> = - м</div>
+                        </div>
+                    </div>
+
+                    <div id="compensator_conclusion"></div>
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn" onclick="calculateCompensators()">ВЫПОЛНИТЬ РАСЧЕТ</button>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="showModule('stability')">← ПРЕДЫДУЩАЯ ГЛАВА</button>
+                    <button class="btn btn-secondary" onclick="showModule('seismic')" style="margin-left: 15px;">СЛЕДУЮЩАЯ ГЛАВА: 7. СЕЙСМИКА →</button>
+                </div>
+            </section>
+
+            <!-- 7. СЕЙСМИКА -->
+            <section class="module-section" id="seismic">
+                <div class="section-header">
+                    <h1 class="section-title">РАСЧЕТ ДЛЯ СЕЙСМИЧЕСКИХ РАЙОНОВ</h1>
+                    <p class="section-subtitle">СП 36.13330.2012, п. 12.7</p>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Параметры сейсмичности</h2>
+                    
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Сейсмичность района, баллы</label>
+                            <select class="form-select" id="seismic_level">
+                                <option value="0">Несейсмичный район</option>
+                                <option value="6">6 баллов</option>
+                                <option value="7" selected>7 баллов</option>
+                                <option value="8">8 баллов</option>
+                                <option value="9">9 баллов и более</option>
+                            </select>
+                            <span class="form-help">По картам ОСР-2015</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Категория грунтов по сейсмическим свойствам</label>
+                            <select class="form-select" id="soil_category">
+                                <option value="I">I - Скальные грунты</option>
+                                <option value="II" selected>II - Грунты средней плотности</option>
+                                <option value="III">III - Слабые грунты</option>
+                            </select>
+                            <span class="form-help">СП 14.13330.2018</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Коэффициент сейсмичности K<sub>с</sub></label>
+                        <input type="number" class="form-input" id="seismic_coef" value="0.25" step="0.05" min="0" max="1">
+                        <span class="form-help">Определяется по СП 14.13330.2018 в зависимости от балльности</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Расчет сейсмических нагрузок</h2>
+                    <p class="section-subtitle" style="margin-bottom: 15px;">СП 36.13330.2012, п. 12.7</p>
+                    
+                    <div class="calculation-block">
+                        <div class="calculation-step">
+                            <div class="step-title">Сейсмическая нагрузка на трубопровод:</div>
+                            <div class="step-formula">S<sub>сейсм</sub> = K<sub>с</sub> × (q<sub>тр</sub> + q<sub>пр</sub>)</div>
+                            <div class="step-formula" style="margin-top: 10px; font-size: 0.9rem;">
+                                где:<br>
+                                K<sub>с</sub> - коэффициент сейсмичности<br>
+                                q<sub>тр</sub> - вес трубы с изоляцией, Н/м<br>
+                                q<sub>пр</sub> - вес продукта, Н/м
+                            </div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Подстановка значений:</div>
+                            <div class="step-formula" id="seismic_load_calc">-</div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Сейсмическая нагрузка:</div>
+                            <div class="step-result" id="seismic_load_result">S<sub>сейсм</sub> = - Н/м</div>
+                        </div>
+                    </div>
+
+                    <div class="calculation-block">
+                        <div class="calculation-step">
+                            <div class="step-title">Дополнительные продольные напряжения от сейсмики:</div>
+                            <div class="step-formula">σ<sub>сейсм</sub> = (S<sub>сейсм</sub> × D<sub>н</sub>) / (4 × δ<sub>ном</sub>)</div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Подстановка значений:</div>
+                            <div class="step-formula" id="seismic_stress_calc">-</div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Дополнительные напряжения:</div>
+                            <div class="step-result" id="seismic_stress_result">σ<sub>сейсм</sub> = - МПа</div>
+                        </div>
+                    </div>
+
+                    <div class="calculation-block">
+                        <div class="calculation-step">
+                            <div class="step-title">Суммарные продольные напряжения:</div>
+                            <div class="step-formula" id="total_stress_calc">σ<sub>пр,сумм</sub> = σ<sub>пр</sub> + σ<sub>сейсм</sub> = -</div>
+                        </div>
+                        
+                        <div class="calculation-step">
+                            <div class="step-title">Проверка условия прочности:</div>
+                            <div class="step-formula" id="seismic_check_formula">-</div>
+                            <div id="seismic_check_result"></div>
+                        </div>
+                    </div>
+
+                    <div id="seismic_conclusion"></div>
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn" onclick="calculateSeismic()">ВЫПОЛНИТЬ РАСЧЕТ</button>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="showModule('compensators')">← ПРЕДЫДУЩАЯ ГЛАВА</button>
+                    <button class="btn btn-secondary" onclick="showModule('report-final')" style="margin-left: 15px;">СЛЕДУЮЩАЯ ГЛАВА: 8. ИТОГОВЫЙ ОТЧЕТ →</button>
+                </div>
+            </section>
+
+            <!-- 8. ИТОГОВЫЙ ОТЧЕТ -->
+            <section class="module-section" id="report-final">
+                <div class="section-header">
+                    <h1 class="section-title">ИТОГОВЫЙ ОТЧЕТ</h1>
+                    <p class="section-subtitle">Полные результаты всех расчетов</p>
+                </div>
+
+                <div class="report-section">
+                    <div class="report-header">
+                        <div class="report-title-main">КОМПЛЕКСНЫЙ РАСЧЕТ МАГИСТРАЛЬНОГО ТРУБОПРОВОДА</div>
+                        <div class="report-subtitle">СП 36.13330.2012 "Магистральные трубопроводы" (Актуализированная редакция)</div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">1. Общие сведения</h2>
+                        <div id="final_report_general"></div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">2. Исходные данные</h2>
+                        <div id="final_report_input"></div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">3. Расчет толщины стенки (п. 12.3)</h2>
+                        <div id="final_report_thickness"></div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">4. Проверка прочности (п. 12.4)</h2>
+                        <div id="final_report_strength"></div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">5. Устойчивость против всплытия (п. 12.4.5)</h2>
+                        <div id="final_report_stability"></div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">6. Температурные компенсаторы (п. 12.6)</h2>
+                        <div id="final_report_compensators"></div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">7. Сейсмические воздействия (п. 12.7)</h2>
+                        <div id="final_report_seismic"></div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">8. Итоговое заключение</h2>
+                        <div id="final_report_conclusion"></div>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 30px;">
+                        <button class="btn" onclick="generateFinalReport()">СФОРМИРОВАТЬ ИТОГОВЫЙ ОТЧЕТ</button>
+                        <button class="print-btn" onclick="window.print()" style="margin-left: 15px;">🖨️ ПЕЧАТЬ ОТЧЕТА</button>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="showModule('seismic')">← ПРЕДЫДУЩАЯ ГЛАВА</button>
+                    <button class="btn btn-secondary" onclick="showModule('reference')" style="margin-left: 15px;">ВЕРНУТЬСЯ К НАЧАЛУ</button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        // Объект для хранения результатов расчета
+        let calculationResults = {
+            inputs: {},
+            R1: 0,
+            n: 0,
+            deltaCalc: 0,
+            deltaNom: 0,
+            Dvn: 0,
+            sigmaRing: 0,
+            sigmaLong: 0,
+            psi: 0,
+            check1Pass: false,
+            check2Pass: false,
+            overallPass: false
+        };
+
+        // Навигация по модулям
+        function showModule(moduleId) {
+            const sections = document.querySelectorAll('.module-section');
+            const navItems = document.querySelectorAll('.module-nav-item');
+            
+            sections.forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            navItems.forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            const targetSection = document.getElementById(moduleId);
+            const targetNav = document.querySelector('[data-module="' + moduleId + '"]');
+            
+            if (targetSection) targetSection.classList.add('active');
+            if (targetNav) targetNav.classList.add('active');
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Инициализация навигации при загрузке
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.module-nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const module = item.getAttribute('data-module');
+                    showModule(module);
+                });
+            });
+            
+            // Показываем первый модуль при загрузке
+            showModule('reference');
+        });
+
+        // Автоматический расчет температурного перепада
+        document.getElementById('temp_work').addEventListener('input', updateTempDelta);
+        document.getElementById('temp_mount').addEventListener('input', updateTempDelta);
+
+        function updateTempDelta() {
+            const tWork = parseFloat(document.getElementById('temp_work').value) || 0;
+            const tMount = parseFloat(document.getElementById('temp_mount').value) || 0;
+            document.getElementById('temp_delta').value = (tWork - tMount).toFixed(1);
+        }
+
+        // Основная функция расчета
+        function calculateAll() {
+            // Собираем входные данные
+            const inputs = {
+                diameter: parseFloat(document.getElementById('diameter').value),
+                pressure: parseFloat(document.getElementById('pressure').value),
+                category: document.getElementById('category').value,
+                medium: document.getElementById('medium').value,
+                yieldStrength: parseFloat(document.getElementById('yield_strength').value),
+                tensileStrength: parseFloat(document.getElementById('tensile_strength').value),
+                kn1: parseFloat(document.getElementById('k_n1').value),
+                kn2: parseFloat(document.getElementById('k_n2').value),
+                kn: parseFloat(document.getElementById('k_n').value),
+                tempWork: parseFloat(document.getElementById('temp_work').value),
+                tempMount: parseFloat(document.getElementById('temp_mount').value),
+                tempDelta: parseFloat(document.getElementById('temp_delta').value),
+                depth: parseFloat(document.getElementById('depth').value),
+                bendRadius: parseFloat(document.getElementById('bend_radius').value)
+            };
+
+            calculationResults.inputs = inputs;
+
+            // Определяем коэффициент m
+            const mValues = { 'B': 0.660, 'I': 0.825, 'II': 0.825, 'III': 0.990, 'IV': 0.990 };
+            const m = mValues[inputs.category];
+
+            // Определяем коэффициент n
+            let n;
+            if (inputs.category === 'B' || inputs.category === 'I') n = 1.10;
+            else if (inputs.category === 'II') n = 1.00;
+            else n = 0.90;
+
+            calculationResults.n = n;
+
+            // Расчет R1
+            const R1 = (m * inputs.yieldStrength) / (inputs.kn1 * inputs.kn);
+            calculationResults.R1 = R1;
+
+            // Расчет толщины стенки
+            const deltaCalc = (n * inputs.pressure * inputs.diameter) / (2 * (R1 + n * inputs.pressure));
+            calculationResults.deltaCalc = deltaCalc;
+
+            // Минимальная толщина по нормам
+            let deltaMin = inputs.diameter / 100;
+            if (inputs.diameter <= 200) deltaMin = Math.max(deltaMin, 3);
+            else deltaMin = Math.max(deltaMin, 4);
+            if (inputs.diameter >= 1000) deltaMin = Math.max(deltaMin, 12);
+
+            // Округление до стандартных толщин
+            const standardThicknesses = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40];
+            let deltaNom = standardThicknesses.find(t => t >= Math.max(deltaCalc, deltaMin)) || Math.ceil(Math.max(deltaCalc, deltaMin));
+            calculationResults.deltaNom = deltaNom;
+
+            // Расчет напряжений
+            const Dvn = inputs.diameter - 2 * deltaNom;
+            calculationResults.Dvn = Dvn;
+
+            const sigmaRing = (inputs.pressure * Dvn) / (2 * deltaNom);
+            calculationResults.sigmaRing = sigmaRing;
+
+            // Константы
+            const mu = 0.3;
+            const alpha = 1.2e-5;
+            const E = 206000;
+
+            // Продольные напряжения
+            let bendTerm = 0;
+            if (inputs.bendRadius > 0) {
+                bendTerm = (E * inputs.diameter) / (2 * inputs.bendRadius * 1000);
+            }
+
+            const sigmaLongPlus = mu * sigmaRing - alpha * E * inputs.tempDelta + bendTerm;
+            const sigmaLongMinus = mu * sigmaRing - alpha * E * inputs.tempDelta - bendTerm;
+            calculationResults.sigmaLongPlus = sigmaLongPlus;
+            calculationResults.sigmaLongMinus = sigmaLongMinus;
+
+            // Коэффициент psi для обоих случаев
+            let psiPlus = 1.0;
+            let psiMinus = 1.0;
+            
+            if (sigmaLongPlus < 0) {
+                const term1 = sigmaRing / ((m * inputs.yieldStrength) / (inputs.kn1 * inputs.kn));
+                psiPlus = Math.sqrt(1 - term1) - 0.5 * term1;
+            }
+            
+            if (sigmaLongMinus < 0) {
+                const term1 = sigmaRing / ((m * inputs.yieldStrength) / (inputs.kn1 * inputs.kn));
+                psiMinus = Math.sqrt(1 - term1) - 0.5 * term1;
+            }
+            
+            calculationResults.psiPlus = psiPlus;
+            calculationResults.psiMinus = psiMinus;
+
+            // Проверка условий по формулам 11 и 12 для обоих случаев
+            
+            // Для σпр+
+            const limit1Plus = (psiPlus * m * inputs.yieldStrength) / (inputs.kn1 * inputs.kn);
+            const limit2Plus = (m * inputs.yieldStrength) / inputs.kn1;
+            const check1PlusPass = Math.abs(sigmaLongPlus) <= limit1Plus;
+            const check2PlusPass = Math.abs(sigmaLongPlus) <= limit2Plus;
+            
+            // Для σпр-
+            const limit1Minus = (psiMinus * m * inputs.yieldStrength) / (inputs.kn1 * inputs.kn);
+            const limit2Minus = (m * inputs.yieldStrength) / inputs.kn1;
+            const check1MinusPass = Math.abs(sigmaLongMinus) <= limit1Minus;
+            const check2MinusPass = Math.abs(sigmaLongMinus) <= limit2Minus;
+            
+            calculationResults.limit1Plus = limit1Plus;
+            calculationResults.limit2Plus = limit2Plus;
+            calculationResults.limit1Minus = limit1Minus;
+            calculationResults.limit2Minus = limit2Minus;
+            calculationResults.check1PlusPass = check1PlusPass;
+            calculationResults.check2PlusPass = check2PlusPass;
+            calculationResults.check1MinusPass = check1MinusPass;
+            calculationResults.check2MinusPass = check2MinusPass;
+
+            calculationResults.overallPass = check1PlusPass && check2PlusPass && check1MinusPass && check2MinusPass;
+
+            // Отображение результатов
+            displayThicknessResults();
+            displayStrengthResults();
+            generateBasicReport();
+
+            // Переход к модулю толщины
+            showModule('thickness');
+        }
+
+        function displayThicknessResults() {
+            const res = calculationResults;
+            const inp = res.inputs;
+
+            // Исходные данные
+            document.getElementById('res_diam').innerHTML = `${inp.diameter.toFixed(1)}<span class="result-unit">мм</span>`;
+            document.getElementById('res_press').innerHTML = `${inp.pressure.toFixed(2)}<span class="result-unit">МПа</span>`;
+            document.getElementById('res_cat').textContent = inp.category;
+
+            // Расчет R1
+            const mValues = { 'B': 0.660, 'I': 0.825, 'II': 0.825, 'III': 0.990, 'IV': 0.990 };
+            const m = mValues[inp.category];
+
+            document.getElementById('r1_calc').innerHTML = 
+                `R<sub>1</sub> = (${m.toFixed(3)} × ${inp.yieldStrength}) / (${inp.kn1} × ${inp.kn}) = ...`;
+            document.getElementById('r1_result').innerHTML = 
+                `R<sub>1</sub> = <span style="color: var(--success)">${res.R1.toFixed(2)}</span> МПа`;
+
+            // Коэффициент n
+            document.getElementById('n_result').innerHTML = 
+                `n = <span style="color: var(--success)">${res.n.toFixed(2)}</span>`;
+
+            // Расчет толщины
+            document.getElementById('delta_calc').innerHTML = 
+                `δ = (${res.n.toFixed(2)} × ${inp.pressure} × ${inp.diameter}) / (2 × (${res.R1.toFixed(2)} + ${res.n.toFixed(2)} × ${inp.pressure}))`;
+            document.getElementById('delta_result').innerHTML = 
+                `δ<sub>расч</sub> = <span style="color: var(--success)">${res.deltaCalc.toFixed(2)}</span> мм`;
+            document.getElementById('delta_nominal').innerHTML = 
+                `δ<sub>ном</sub> = <span style="color: var(--success)">${res.deltaNom.toFixed(1)}</span> мм`;
+
+            // Проверка минимальной толщины
+            let checkHtml = '<div class="alert alert-success" style="margin-top: 20px;">';
+            checkHtml += '<strong>✓ Минимальные требования выполнены:</strong><br>';
+            checkHtml += `• Толщина ≥ DN/100 = ${(inp.diameter/100).toFixed(2)} мм ✓<br>`;
+            if (inp.diameter <= 200) {
+                checkHtml += `• Толщина ≥ 3 мм (для DN ≤ 200) ✓<br>`;
+            } else {
+                checkHtml += `• Толщина ≥ 4 мм (для DN > 200) ✓<br>`;
+            }
+            if (inp.diameter >= 1000) {
+                checkHtml += `• Толщина ≥ 12 мм (для DN ≥ 1000) ✓`;
+            }
+            checkHtml += '</div>';
+            document.getElementById('thickness_check').innerHTML = checkHtml;
+        }
+
+        function displayStrengthResults() {
+            const res = calculationResults;
+            const inp = res.inputs;
+
+            // Внутренний диаметр
+            document.getElementById('dvn_calc').innerHTML = 
+                `D<sub>вн</sub> = ${inp.diameter} - 2 × ${res.deltaNom} = <span style="color: var(--success)">${res.Dvn.toFixed(2)} мм</span>`;
+
+            // Кольцевые напряжения
+            document.getElementById('ring_calc').innerHTML = 
+                `σ<sub>кц</sub> = (${inp.pressure} × ${res.Dvn.toFixed(2)}) / (2 × ${res.deltaNom})`;
+            document.getElementById('ring_result').innerHTML = 
+                `σ<sub>кц</sub> = <span style="color: var(--success)">${res.sigmaRing.toFixed(2)}</span> МПа`;
+
+            // Температурный перепад
+            document.getElementById('temp_calc').innerHTML = 
+                `Δt = ${inp.tempWork} - ${inp.tempMount} = <span style="color: var(--success)">${inp.tempDelta.toFixed(1)}°C</span>`;
+
+            // Продольные напряжения с "+"
+            let longCalcPlus = `σ<sub>пр</sub>(+) = 0.3 × ${res.sigmaRing.toFixed(2)} - 1.2×10<sup>-5</sup> × 206000 × ${inp.tempDelta.toFixed(1)}`;
+            if (inp.bendRadius > 0) {
+                longCalcPlus += ` <strong>+</strong> (206000 × ${inp.diameter}) / (2 × ${inp.bendRadius} × 1000)`;
+            }
+            
+            // Продольные напряжения с "-"
+            let longCalcMinus = `σ<sub>пр</sub>(-) = 0.3 × ${res.sigmaRing.toFixed(2)} - 1.2×10<sup>-5</sup> × 206000 × ${inp.tempDelta.toFixed(1)}`;
+            if (inp.bendRadius > 0) {
+                longCalcMinus += ` <strong>-</strong> (206000 × ${inp.diameter}) / (2 × ${inp.bendRadius} × 1000)`;
+            }
+            
+            document.getElementById('long_calc').innerHTML = 
+                '<div style="margin-bottom: 15px;"><strong>Вариант 1 (знак "+"):</strong><br>' + longCalcPlus + '</div>' +
+                '<div><strong>Вариант 2 (знак "-"):</strong><br>' + longCalcMinus + '</div>';
+            
+            document.getElementById('long_result').innerHTML = 
+                `σ<sub>пр</sub>(+) = <span style="color: var(--success)">${res.sigmaLongPlus.toFixed(2)}</span> МПа<br>` +
+                `σ<sub>пр</sub>(-) = <span style="color: var(--success)">${res.sigmaLongMinus.toFixed(2)}</span> МПа`;
+
+            // Проверка условий
+            const mValues = { 'B': 0.660, 'I': 0.825, 'II': 0.825, 'III': 0.990, 'IV': 0.990 };
+            const m = mValues[inp.category];
+
+            // Формула 11 для обоих вариантов
+            let check1Html = '<div style="margin-bottom: 20px;">';
+            check1Html += '<strong>Вариант 1 (σ<sub>пр</sub> с "+"):</strong><br>';
+            check1Html += `|σ<sub>пр</sub>(+)| ≤ (ψ × m × R<sub>н</sub>) / (k<sub>н1</sub> × k<sub>н</sub>)<br>`;
+            check1Html += `${Math.abs(res.sigmaLongPlus).toFixed(2)} ≤ (${res.psiPlus.toFixed(3)} × ${m} × ${inp.yieldStrength}) / (${inp.kn1} × ${inp.kn}) = ${res.limit1Plus.toFixed(2)} МПа`;
+            
+            if (res.check1PlusPass) {
+                check1Html += '<div class="alert alert-success" style="margin-top: 5px;">✓ УСЛОВИЕ ВЫПОЛНЕНО</div>';
+            } else {
+                check1Html += '<div class="alert alert-error" style="margin-top: 5px;">✗ УСЛОВИЕ НЕ ВЫПОЛНЕНО</div>';
+            }
+            check1Html += '</div>';
+            
+            check1Html += '<div>';
+            check1Html += '<strong>Вариант 2 (σ<sub>пр</sub> с "-"):</strong><br>';
+            check1Html += `|σ<sub>пр</sub>(-)| ≤ (ψ × m × R<sub>н</sub>) / (k<sub>н1</sub> × k<sub>н</sub>)<br>`;
+            check1Html += `${Math.abs(res.sigmaLongMinus).toFixed(2)} ≤ (${res.psiMinus.toFixed(3)} × ${m} × ${inp.yieldStrength}) / (${inp.kn1} × ${inp.kn}) = ${res.limit1Minus.toFixed(2)} МПа`;
+            
+            if (res.check1MinusPass) {
+                check1Html += '<div class="alert alert-success" style="margin-top: 5px;">✓ УСЛОВИЕ ВЫПОЛНЕНО</div>';
+            } else {
+                check1Html += '<div class="alert alert-error" style="margin-top: 5px;">✗ УСЛОВИЕ НЕ ВЫПОЛНЕНО</div>';
+            }
+            check1Html += '</div>';
+            
+            document.getElementById('check1_formula').innerHTML = check1Html;
+            document.getElementById('check1_result').innerHTML = '';
+
+            // Формула 12 для обоих вариантов
+            let check2Html = '<div style="margin-bottom: 20px;">';
+            check2Html += '<strong>Вариант 1 (σ<sub>пр</sub> с "+"):</strong><br>';
+            check2Html += `|σ<sub>пр</sub>(+)| ≤ (m × R<sub>н</sub>) / k<sub>н1</sub><br>`;
+            check2Html += `${Math.abs(res.sigmaLongPlus).toFixed(2)} ≤ (${m} × ${inp.yieldStrength}) / ${inp.kn1} = ${res.limit2Plus.toFixed(2)} МПа`;
+            
+            if (res.check2PlusPass) {
+                check2Html += '<div class="alert alert-success" style="margin-top: 5px;">✓ УСЛОВИЕ ВЫПОЛНЕНО</div>';
+            } else {
+                check2Html += '<div class="alert alert-error" style="margin-top: 5px;">✗ УСЛОВИЕ НЕ ВЫПОЛНЕНО</div>';
+            }
+            check2Html += '</div>';
+            
+            check2Html += '<div>';
+            check2Html += '<strong>Вариант 2 (σ<sub>пр</sub> с "-"):</strong><br>';
+            check2Html += `|σ<sub>пр</sub>(-)| ≤ (m × R<sub>н</sub>) / k<sub>н1</sub><br>`;
+            check2Html += `${Math.abs(res.sigmaLongMinus).toFixed(2)} ≤ (${m} × ${inp.yieldStrength}) / ${inp.kn1} = ${res.limit2Minus.toFixed(2)} МПа`;
+            
+            if (res.check2MinusPass) {
+                check2Html += '<div class="alert alert-success" style="margin-top: 5px;">✓ УСЛОВИЕ ВЫПОЛНЕНО</div>';
+            } else {
+                check2Html += '<div class="alert alert-error" style="margin-top: 5px;">✗ УСЛОВИЕ НЕ ВЫПОЛНЕНО</div>';
+            }
+            check2Html += '</div>';
+            
+            document.getElementById('check2_formula').innerHTML = check2Html;
+            document.getElementById('check2_result').innerHTML = '';
+
+            // Заключение
+            if (res.overallPass) {
+                document.getElementById('strength_conclusion').innerHTML = 
+                    '<div class="alert alert-success" style="margin-top: 20px; font-size: 1.1rem;">' +
+                    '<strong>✓ ПРОЧНОСТЬ И УСТОЙЧИВОСТЬ ОБЕСПЕЧЕНЫ</strong><br>' +
+                    'Все условия прочности выполнены. Трубопровод соответствует требованиям СП 36.13330.2012' +
+                    '</div>';
+            } else {
+                document.getElementById('strength_conclusion').innerHTML = 
+                    '<div class="alert alert-error" style="margin-top: 20px; font-size: 1.1rem;">' +
+                    '<strong>✗ ПРОЧНОСТЬ НЕ ОБЕСПЕЧЕНА</strong><br>' +
+                    'Не все условия прочности выполнены. Требуется корректировка параметров трубопровода' +
+                    '</div>';
+            }
+        }
+
+        function generateBasicReport() {
+            const res = calculationResults;
+            const inp = res.inputs;
+
+            // Исходные данные
+            let inputDataHtml = '';
+            inputDataHtml += `<div class="report-row"><span class="report-label">Наружный диаметр D<sub>н</sub>:</span><span class="report-value">${inp.diameter} мм</span></div>`;
+            inputDataHtml += `<div class="report-row"><span class="report-label">Рабочее давление p:</span><span class="report-value">${inp.pressure} МПа</span></div>`;
+            inputDataHtml += `<div class="report-row"><span class="report-label">Категория трубопровода:</span><span class="report-value">${inp.category}</span></div>`;
+            inputDataHtml += `<div class="report-row"><span class="report-label">Тип среды:</span><span class="report-value">${inp.medium === 'gas' ? 'Газ' : (inp.medium === 'oil' ? 'Нефть' : 'Нефтепродукты')}</span></div>`;
+            inputDataHtml += `<div class="report-row"><span class="report-label">Нормативный предел текучести R<sub>н</sub>:</span><span class="report-value">${inp.yieldStrength} МПа</span></div>`;
+            inputDataHtml += `<div class="report-row"><span class="report-label">Температурный перепад Δt:</span><span class="report-value">${inp.tempDelta} °C</span></div>`;
+            document.getElementById('report_input_data').innerHTML = inputDataHtml;
+
+            // Результаты расчета толщины
+            let thicknessHtml = '';
+            thicknessHtml += `<div class="report-row"><span class="report-label">Расчетное сопротивление R<sub>1</sub>:</span><span class="report-value">${res.R1.toFixed(2)} МПа</span></div>`;
+            thicknessHtml += `<div class="report-row"><span class="report-label">Коэффициент надежности n:</span><span class="report-value">${res.n.toFixed(2)}</span></div>`;
+            thicknessHtml += `<div class="report-row"><span class="report-label">Расчетная толщина стенки δ<sub>расч</sub>:</span><span class="report-value">${res.deltaCalc.toFixed(2)} мм</span></div>`;
+            thicknessHtml += `<div class="report-row"><span class="report-label">Принятая толщина стенки δ<sub>ном</sub>:</span><span class="report-value">${res.deltaNom} мм</span></div>`;
+            document.getElementById('report_thickness_data').innerHTML = thicknessHtml;
+
+            // Проверка прочности
+            let strengthHtml = '';
+            strengthHtml += `<div class="report-row"><span class="report-label">Внутренний диаметр D<sub>вн</sub>:</span><span class="report-value">${res.Dvn.toFixed(2)} мм</span></div>`;
+            strengthHtml += `<div class="report-row"><span class="report-label">Кольцевые напряжения σ<sub>кц</sub>:</span><span class="report-value">${res.sigmaRing.toFixed(2)} МПа</span></div>`;
+            strengthHtml += `<div class="report-row"><span class="report-label">Продольные напряжения σ<sub>пр</sub>(+):</span><span class="report-value">${res.sigmaLongPlus.toFixed(2)} МПа</span></div>`;
+            strengthHtml += `<div class="report-row"><span class="report-label">Продольные напряжения σ<sub>пр</sub>(-):</span><span class="report-value">${res.sigmaLongMinus.toFixed(2)} МПа</span></div>`;
+            strengthHtml += `<div class="report-row"><span class="report-label">Все условия прочности:</span><span class="report-value">${res.overallPass ? '✓ Выполнено' : '✗ Не выполнено'}</span></div>`;
+            document.getElementById('report_strength_data').innerHTML = strengthHtml;
+
+            // Заключение
+            let conclusionHtml = '';
+            if (res.overallPass) {
+                conclusionHtml = '<div class="alert alert-success">' +
+                    '<strong>ЗАКЛЮЧЕНИЕ: ТРУБОПРОВОД СООТВЕТСТВУЕТ ТРЕБОВАНИЯМ</strong><br><br>' +
+                    'По результатам расчета установлено:<br>' +
+                    '• Расчетная толщина стенки определена согласно п. 12.3 СП 36.13330.2012<br>' +
+                    '• Проверка прочности выполнена согласно п. 12.4.2 СП 36.13330.2012<br>' +
+                    '• Все условия прочности и устойчивости выполнены<br>' +
+                    '• Трубопровод пригоден для эксплуатации при заданных параметрах' +
+                    '</div>';
+            } else {
+                conclusionHtml = '<div class="alert alert-error">' +
+                    '<strong>ЗАКЛЮЧЕНИЕ: ТРЕБУЕТСЯ КОРРЕКТИРОВКА</strong><br><br>' +
+                    'По результатам расчета установлено:<br>' +
+                    '• Не все условия прочности выполнены<br>' +
+                    '• Рекомендуется увеличить толщину стенки трубы<br>' +
+                    '• Либо уменьшить рабочее давление<br>' +
+                    '• Либо выбрать материал с более высоким пределом текучести' +
+                    '</div>';
+            }
+            document.getElementById('report_conclusion').innerHTML = conclusionHtml;
+        }
+
+        function resetInputs() {
+            document.getElementById('diameter').value = 1020;
+            document.getElementById('pressure').value = 7.5;
+            document.getElementById('category').value = 'III';
+            document.getElementById('medium').value = 'oil';
+            document.getElementById('yield_strength').value = 390;
+            document.getElementById('tensile_strength').value = 530;
+            document.getElementById('k_n1').value = 1.34;
+            document.getElementById('k_n2').value = 1.15;
+            document.getElementById('k_n').value = 1.0;
+            document.getElementById('temp_work').value = 40;
+            document.getElementById('temp_mount').value = 15;
+            updateTempDelta();
+            document.getElementById('depth').value = 1.5;
+            document.getElementById('bend_radius').value = 1000;
+        }
+
+        // Функции для дополнительных модулей
+
+        // 5. Расчет устойчивости против всплытия
+        function calculateStability() {
+            const inp = calculationResults.inputs;
+            const res = calculationResults;
+            
+            const depth = parseFloat(document.getElementById('stab_depth').value);
+            const waterLevel = parseFloat(document.getElementById('water_level').value);
+            const soilDensity = parseFloat(document.getElementById('soil_density').value);
+            const mediumDensity = parseFloat(document.getElementById('medium_density').value);
+            const gammaN = parseFloat(document.getElementById('gamma_n').value);
+            
+            // Вес трубы (примерный расчет)
+            const steelDensity = 7850; // кг/м³
+            const pipeArea = Math.PI * (Math.pow(inp.diameter/1000, 2) - Math.pow((inp.diameter/1000 - 2*res.deltaNom/1000), 2)) / 4;
+            const qTube = pipeArea * steelDensity * 9.81; // Н/м
+            
+            // Вес продукта
+            const innerArea = Math.PI * Math.pow((inp.diameter/1000 - 2*res.deltaNom/1000), 2) / 4;
+            const qProduct = innerArea * mediumDensity * 1000; // Н/м
+            
+            // Вес грунта над трубой
+            const soilWidth = inp.diameter / 1000 + 0.5; // м
+            const qSoil = soilWidth * depth * soilDensity * 1000 * 0.95; // с коэф. 0.95
+            
+            // Архимедова сила
+            const waterDepth = depth - waterLevel;
+            const qArch = Math.PI * Math.pow(inp.diameter/1000, 2) / 4 * waterDepth * 10 * 1000 * gammaN; // Н/м
+            
+            // Вывод результатов
+            document.getElementById('stab_qtube_calc').innerHTML = 
+                `q<sub>тр</sub> = π/4 × ((${inp.diameter}<sup>2</sup> - ${(inp.diameter - 2*res.deltaNom).toFixed(1)}<sup>2</sup>) / 10<sup>6</sup>) × 7850 × 9.81`;
+            document.getElementById('stab_qtube_result').innerHTML = 
+                `q<sub>тр</sub> = <span style="color: var(--success)">${qTube.toFixed(1)}</span> Н/м`;
+            
+            document.getElementById('stab_qprod_calc').innerHTML = 
+                `q<sub>пр</sub> = π/4 × (${(inp.diameter - 2*res.deltaNom).toFixed(1)}<sup>2</sup> / 10<sup>6</sup>) × ${mediumDensity} × 1000`;
+            document.getElementById('stab_qprod_result').innerHTML = 
+                `q<sub>пр</sub> = <span style="color: var(--success)">${qProduct.toFixed(1)}</span> Н/м`;
+            
+            document.getElementById('stab_qsoil_calc').innerHTML = 
+                `q<sub>гр</sub> = ${soilWidth.toFixed(2)} × ${depth} × ${soilDensity} × 1000 × 0.95`;
+            document.getElementById('stab_qsoil_result').innerHTML = 
+                `q<sub>гр</sub> = <span style="color: var(--success)">${qSoil.toFixed(1)}</span> Н/м`;
+            
+            document.getElementById('stab_qarch_calc').innerHTML = 
+                `q<sub>a</sub> = π/4 × (${inp.diameter}<sup>2</sup> / 10<sup>6</sup>) × ${waterDepth.toFixed(2)} × 10 × 1000 × ${gammaN}`;
+            document.getElementById('stab_qarch_result').innerHTML = 
+                `q<sub>a</sub> = <span style="color: var(--success)">${qArch.toFixed(1)}</span> Н/м`;
+            
+            // Проверка условия
+            const leftSide = qTube + qProduct + qSoil;
+            const rightSide = qArch;
+            const isStable = leftSide >= rightSide;
+            
+            document.getElementById('stab_condition').innerHTML = 
+                `q<sub>тр</sub> + q<sub>пр</sub> + q<sub>гр</sub> ≥ q<sub>a</sub><br>` +
+                `${qTube.toFixed(1)} + ${qProduct.toFixed(1)} + ${qSoil.toFixed(1)} = ${leftSide.toFixed(1)} ${isStable ? '≥' : '<'} ${rightSide.toFixed(1)} Н/м`;
+            
+            if (isStable) {
+                document.getElementById('stab_check_result').innerHTML = 
+                    '<div class="alert alert-success" style="margin-top: 10px;"><strong>✓ УСТОЙЧИВОСТЬ ОБЕСПЕЧЕНА</strong><br>Балластировка не требуется</div>';
+                document.getElementById('ballast_section').style.display = 'none';
+                document.getElementById('stability_conclusion').innerHTML = 
+                    '<div class="alert alert-success" style="margin-top: 20px;"><strong>ЗАКЛЮЧЕНИЕ:</strong> Трубопровод устойчив против всплытия</div>';
+            } else {
+                const ballast = rightSide - leftSide;
+                document.getElementById('stab_check_result').innerHTML = 
+                    '<div class="alert alert-error" style="margin-top: 10px;"><strong>✗ УСТОЙЧИВОСТЬ НЕ ОБЕСПЕЧЕНА</strong><br>Требуется балластировка</div>';
+                document.getElementById('ballast_section').style.display = 'block';
+                document.getElementById('ballast_calc').innerHTML = 
+                    `q<sub>балл</sub> = q<sub>a</sub> - (q<sub>тр</sub> + q<sub>пр</sub> + q<sub>гр</sub>) = ${rightSide.toFixed(1)} - ${leftSide.toFixed(1)}`;
+                document.getElementById('ballast_result').innerHTML = 
+                    `q<sub>балл</sub> = <span style="color: var(--error)">${ballast.toFixed(1)}</span> Н/м`;
+                document.getElementById('stability_conclusion').innerHTML = 
+                    `<div class="alert alert-warning" style="margin-top: 20px;"><strong>ЗАКЛЮЧЕНИЕ:</strong> Требуется установка балластирующих грузов ${ballast.toFixed(1)} Н/м</div>`;
+            }
+            
+            showModule('stability');
+        }
+
+        // 6. Расчет компенсаторов
+        document.getElementById('comp_t1').addEventListener('input', updateCompDelta);
+        document.getElementById('comp_t2').addEventListener('input', updateCompDelta);
+        
+        function updateCompDelta() {
+            const t1 = parseFloat(document.getElementById('comp_t1').value) || 0;
+            const t2 = parseFloat(document.getElementById('comp_t2').value) || 0;
+            document.getElementById('comp_delta_t').value = (t2 - t1).toFixed(1);
+        }
+        
+        function calculateCompensators() {
+            const inp = calculationResults.inputs;
+            const length = parseFloat(document.getElementById('comp_length').value);
+            const deltaT = parseFloat(document.getElementById('comp_delta_t').value);
+            const alpha = 1.2e-5;
+            
+            // Температурное удлинение
+            const deltaL = alpha * length * 1000 * deltaT; // мм
+            
+            document.getElementById('comp_delta_calc').innerHTML = 
+                `ΔL = 1.2×10<sup>-5</sup> × ${length} × 1000 × ${deltaT}`;
+            document.getElementById('comp_delta_result').innerHTML = 
+                `ΔL = <span style="color: var(--success)">${deltaL.toFixed(2)}</span> мм`;
+            
+            // Расчет П-образного компенсатора
+            const b = Math.sqrt(2.5 * inp.diameter * deltaL) / 1000; // метры
+            const Lp = 3 * b;
+            
+            document.getElementById('comp_b_calc').innerHTML = 
+                `b = √(2.5 × ${inp.diameter} × ${deltaL.toFixed(2)}) / 1000`;
+            document.getElementById('comp_b_result').innerHTML = 
+                `b = <span style="color: var(--success)">${b.toFixed(2)}</span> м`;
+            
+            document.getElementById('comp_lp_calc').innerHTML = 
+                `L<sub>п</sub> = 3 × b = 3 × ${b.toFixed(2)}`;
+            document.getElementById('comp_lp_result').innerHTML = 
+                `L<sub>п</sub> = <span style="color: var(--success)">${Lp.toFixed(2)}</span> м`;
+            
+            document.getElementById('compensator_conclusion').innerHTML = 
+                `<div class="alert alert-success" style="margin-top: 20px;">` +
+                `<strong>РЕКОМЕНДАЦИИ:</strong><br>` +
+                `• Вылет компенсатора: ${b.toFixed(2)} м<br>` +
+                `• Длина плеча: ${Lp.toFixed(2)} м<br>` +
+                `• Общая длина компенсатора: ${(2*Lp + 2*b).toFixed(2)} м` +
+                `</div>`;
+            
+            showModule('compensators');
+        }
+
+        // 7. Расчет для сейсмических районов
+        function calculateSeismic() {
+            const inp = calculationResults.inputs;
+            const res = calculationResults;
+            const seismicCoef = parseFloat(document.getElementById('seismic_coef').value);
+            
+            // Упрощенный расчет нагрузок
+            const steelDensity = 7850;
+            const pipeArea = Math.PI * (Math.pow(inp.diameter/1000, 2) - Math.pow((inp.diameter/1000 - 2*res.deltaNom/1000), 2)) / 4;
+            const qTube = pipeArea * steelDensity * 9.81;
+            
+            const innerArea = Math.PI * Math.pow((inp.diameter/1000 - 2*res.deltaNom/1000), 2) / 4;
+            const qProduct = innerArea * 8500; // примерно для нефти
+            
+            const seismicLoad = seismicCoef * (qTube + qProduct);
+            
+            document.getElementById('seismic_load_calc').innerHTML = 
+                `S<sub>сейсм</sub> = ${seismicCoef} × (${qTube.toFixed(1)} + ${qProduct.toFixed(1)})`;
+            document.getElementById('seismic_load_result').innerHTML = 
+                `S<sub>сейсм</sub> = <span style="color: var(--success)">${seismicLoad.toFixed(1)}</span> Н/м`;
+            
+            // Дополнительные напряжения
+            const sigmaSeismic = (seismicLoad * inp.diameter) / (4 * res.deltaNom);
+            
+            document.getElementById('seismic_stress_calc').innerHTML = 
+                `σ<sub>сейсм</sub> = (${seismicLoad.toFixed(1)} × ${inp.diameter}) / (4 × ${res.deltaNom})`;
+            document.getElementById('seismic_stress_result').innerHTML = 
+                `σ<sub>сейсм</sub> = <span style="color: var(--success)">${sigmaSeismic.toFixed(2)}</span> МПа`;
+            
+            // Суммарные напряжения (используем максимальное из двух вариантов)
+            const sigmaTotal = Math.max(Math.abs(res.sigmaLongPlus), Math.abs(res.sigmaLongMinus)) + sigmaSeismic;
+            
+            document.getElementById('total_stress_calc').innerHTML = 
+                `σ<sub>пр,сумм</sub> = max(|σ<sub>пр</sub>(+)|, |σ<sub>пр</sub>(-)|) + σ<sub>сейсм</sub> = ${sigmaTotal.toFixed(2)} МПа`;
+            
+            // Проверка
+            const mValues = { 'B': 0.660, 'I': 0.825, 'II': 0.825, 'III': 0.990, 'IV': 0.990 };
+            const m = mValues[inp.category];
+            const limit = (m * inp.yieldStrength) / inp.kn1;
+            const isOk = sigmaTotal <= limit;
+            
+            document.getElementById('seismic_check_formula').innerHTML = 
+                `σ<sub>пр,сумм</sub> ≤ (m × R<sub>н</sub>) / k<sub>н1</sub><br>` +
+                `${sigmaTotal.toFixed(2)} ${isOk ? '≤' : '>'} (${m} × ${inp.yieldStrength}) / ${inp.kn1} = ${limit.toFixed(2)} МПа`;
+            
+            if (isOk) {
+                document.getElementById('seismic_check_result').innerHTML = 
+                    '<div class="alert alert-success" style="margin-top: 10px;"><strong>✓ УСЛОВИЕ ВЫПОЛНЕНО</strong></div>';
+                document.getElementById('seismic_conclusion').innerHTML = 
+                    '<div class="alert alert-success" style="margin-top: 20px;"><strong>ЗАКЛЮЧЕНИЕ:</strong> Трубопровод устойчив при сейсмических воздействиях</div>';
+            } else {
+                document.getElementById('seismic_check_result').innerHTML = 
+                    '<div class="alert alert-error" style="margin-top: 10px;"><strong>✗ УСЛОВИЕ НЕ ВЫПОЛНЕНО</strong></div>';
+                document.getElementById('seismic_conclusion').innerHTML = 
+                    '<div class="alert alert-error" style="margin-top: 20px;"><strong>ЗАКЛЮЧЕНИЕ:</strong> Требуется увеличение толщины стенки или применение специальных мер</div>';
+            }
+            
+            showModule('seismic');
+        }
+
+        // 8. Формирование итогового отчета
+        function generateFinalReport() {
+            const res = calculationResults;
+            const inp = res.inputs;
+            
+            // Общие сведения
+            const today = new Date().toLocaleDateString('ru-RU');
+            document.getElementById('final_report_general').innerHTML = 
+                `<div class="report-row"><span class="report-label">Дата расчета:</span><span class="report-value">${today}</span></div>` +
+                `<div class="report-row"><span class="report-label">Нормативный документ:</span><span class="report-value">СП 36.13330.2012</span></div>` +
+                `<div class="report-row"><span class="report-label">Тип трубопровода:</span><span class="report-value">${inp.medium === 'gas' ? 'Газопровод' : (inp.medium === 'oil' ? 'Нефтепровод' : 'Продуктопровод')}</span></div>`;
+            
+            // Исходные данные
+            document.getElementById('final_report_input').innerHTML = 
+                `<div class="report-row"><span class="report-label">Диаметр D<sub>н</sub>:</span><span class="report-value">${inp.diameter} мм</span></div>` +
+                `<div class="report-row"><span class="report-label">Давление p:</span><span class="report-value">${inp.pressure} МПа</span></div>` +
+                `<div class="report-row"><span class="report-label">Категория:</span><span class="report-value">${inp.category}</span></div>` +
+                `<div class="report-row"><span class="report-label">Материал R<sub>н</sub>:</span><span class="report-value">${inp.yieldStrength} МПа</span></div>`;
+            
+            // Толщина стенки
+            document.getElementById('final_report_thickness').innerHTML = 
+                `<div class="report-row"><span class="report-label">Расчетная толщина δ<sub>расч</sub>:</span><span class="report-value">${res.deltaCalc.toFixed(2)} мм</span></div>` +
+                `<div class="report-row"><span class="report-label">Принятая толщина δ<sub>ном</sub>:</span><span class="report-value">${res.deltaNom} мм</span></div>` +
+                `<div class="report-row"><span class="report-label">Расчетное сопротивление R<sub>1</sub>:</span><span class="report-value">${res.R1.toFixed(2)} МПа</span></div>`;
+            
+            // Прочность
+            document.getElementById('final_report_strength').innerHTML = 
+                `<div class="report-row"><span class="report-label">Кольцевые напряжения σ<sub>кц</sub>:</span><span class="report-value">${res.sigmaRing.toFixed(2)} МПа</span></div>` +
+                `<div class="report-row"><span class="report-label">Продольные напряжения σ<sub>пр</sub>(+):</span><span class="report-value">${res.sigmaLongPlus.toFixed(2)} МПа</span></div>` +
+                `<div class="report-row"><span class="report-label">Продольные напряжения σ<sub>пр</sub>(-):</span><span class="report-value">${res.sigmaLongMinus.toFixed(2)} МПа</span></div>` +
+                `<div class="report-row"><span class="report-label">Проверка прочности:</span><span class="report-value">${res.overallPass ? '✓ Выполнена' : '✗ Не выполнена'}</span></div>`;
+            
+            // Итоговое заключение
+            let conclusion = '<div class="alert alert-';
+            conclusion += res.overallPass ? 'success' : 'error';
+            conclusion += '"><strong>ИТОГОВОЕ ЗАКЛЮЧЕНИЕ:</strong><br><br>';
+            
+            if (res.overallPass) {
+                conclusion += 'Расчет магистрального трубопровода выполнен в соответствии с требованиями СП 36.13330.2012.<br><br>';
+                conclusion += '✓ Толщина стенки определена корректно<br>';
+                conclusion += '✓ Прочность и устойчивость обеспечены<br>';
+                conclusion += '✓ Все условия прочности выполнены<br><br>';
+                conclusion += 'Трубопровод с принятыми параметрами пригоден для эксплуатации при заданных условиях.';
+            } else {
+                conclusion += 'По результатам расчета установлено несоответствие требованиям СП 36.13330.2012.<br><br>';
+                conclusion += '✗ Не все условия прочности выполнены<br><br>';
+                conclusion += '<strong>Рекомендации:</strong><br>';
+                conclusion += '• Увеличить толщину стенки трубы<br>';
+                conclusion += '• Использовать материал с более высоким пределом текучести<br>';
+                conclusion += '• Снизить рабочее давление';
+            }
+            conclusion += '</div>';
+            
+            document.getElementById('final_report_conclusion').innerHTML = conclusion;
+            
+            // Заглушки для остальных разделов
+            document.getElementById('final_report_stability').innerHTML = 
+                '<div class="alert alert-warning">Выполните расчет в разделе 5 для отображения результатов</div>';
+            document.getElementById('final_report_compensators').innerHTML = 
+                '<div class="alert alert-warning">Выполните расчет в разделе 6 для отображения результатов</div>';
+            document.getElementById('final_report_seismic').innerHTML = 
+                '<div class="alert alert-warning">Выполните расчет в разделе 7 для отображения результатов</div>';
+            
+            showModule('report-final');
+        }
+
+        // Инициализация
+        updateTempDelta();
+        updateCompDelta();
+    </script>
+  <script src="calc_sp36.js"></script>
+</body>
+</html>
+
