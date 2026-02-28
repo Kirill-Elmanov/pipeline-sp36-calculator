@@ -1,13 +1,13 @@
 // calc_sp36.js
 // Core calculations for SP 36.13330.2012, chapter 12
 
-export function calculateWallThickness({
-  diameter,       // Dн, мм
-  pressure,       // p, МПа
-  category,       // 'B', 'I', 'II', 'III', 'IV'
-  yieldStrength,  // Rн, МПа
-  k1,             // k1
-  kn              // kн
+function calculateWallThickness({
+  diameter,
+  pressure,
+  category,
+  yieldStrength,
+  kn1,
+  kn
 }) {
   const mValues = { B: 0.660, I: 0.825, II: 0.825, III: 0.990, IV: 0.990 };
   const m = mValues[category];
@@ -17,7 +17,7 @@ export function calculateWallThickness({
   else if (category === 'II') n = 1.00;
   else n = 0.90;
 
-  const R1 = (m * yieldStrength) / (k1 * kn);
+  const R1 = (m * yieldStrength) / (kn1 * kn);
   const deltaCalc = (n * pressure * diameter) / (2 * (R1 + n * pressure));
 
   let deltaMin = diameter / 100;
